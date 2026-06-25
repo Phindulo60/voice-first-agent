@@ -7,13 +7,14 @@ The simplest possible voice agent cascade. This is the foundation for the full Z
 ## Architecture
 
 ```
-[Mic Input] → [Whisper ASR] → [Bedrock Claude Sonnet] → [Amazon Polly TTS] → [Speaker Output]
+[Mic Input] → [Whisper ASR] → [Bedrock Claude Sonnet] → [F5-TTS] → [Speaker Output]
+         local                    cloud (only LLM)          local
 ```
 
 ## Future: Full Zulu Pipeline
 
 ```
-[Mic] → [Zulu ASR] → [MT zu→en] → [Bedrock Claude] → [MT en→zu] → [Zulu TTS] → [Speaker]
+[Mic] → [Zulu ASR] → [NLLB MT zu→en] → [Bedrock Claude] → [NLLB MT en→zu] → [F5-TTS Zulu] → [Speaker]
 ```
 
 ## Setup
@@ -30,10 +31,16 @@ source .venv/bin/activate
 # Install dependencies
 pip install -r requirements.txt
 
-# Configure AWS credentials (needs Bedrock + Polly access)
+# Install FFmpeg (needed for F5-TTS audio processing)
+# macOS:
+brew install ffmpeg
+# Ubuntu:
+# sudo apt-get install ffmpeg
+
+# Configure AWS credentials (needs Bedrock access)
 export AWS_PROFILE=your-profile  # or configure ~/.aws/credentials
 
-# Copy env template
+# Copy env template and edit
 cp .env.example .env
 ```
 
@@ -49,20 +56,35 @@ python -m src.llm          # Test LLM with text input
 python -m src.tts          # Test text-to-speech only
 ```
 
+## Voice Cloning (Optional)
+
+F5-TTS supports zero-shot voice cloning. To use your own voice:
+
+1. Record a 5-10 second reference audio clip (clear speech, no background noise)
+2. Save as `ref_audio.wav` in the project root
+3. Set in `.env`:
+```
+TTS_REF_AUDIO=ref_audio.wav
+TTS_REF_TEXT=The exact words spoken in your reference audio.
+```
+
+Leave blank to use F5-TTS's built-in default voice.
+
 ## Components
 
-| Stage | Technology | Notes |
-|-------|-----------|-------|
-| ASR | faster-whisper (local) | No API call, runs on CPU/GPU |
-| LLM | Bedrock Claude Sonnet 4 | Via Converse API |
-| TTS | Amazon Polly | Neural voices, low latency |
+| Stage | Technology | Runs | Notes |
+|-------|-----------|------|-------|
+| ASR | faster-whisper | Local | No API call, CPU or GPU |
+| LLM | Bedrock Claude Sonnet 4 | Cloud | Only cloud dependency |
+| TTS | F5-TTS v1 | Local | Flow-matching, zero-shot voice cloning |
 
 ## Requirements
 
 - Python 3.10+
-- AWS account with Bedrock and Polly access
+- AWS account with Bedrock access
+- FFmpeg installed
 - Microphone
-- macOS / Linux (Windows untested)
+- macOS (Apple Silicon MPS) / Linux (CUDA) / CPU fallback
 
 ## License
 

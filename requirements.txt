@@ -1,7 +1,10 @@
 # ASR - Local Whisper
 faster-whisper>=1.0.0
 
-# AWS SDK
+# TTS - F5-TTS (local, flow-matching)
+f5-tts
+
+# AWS SDK (for Bedrock LLM only)
 boto3>=1.35.0
 
 # Audio I/O

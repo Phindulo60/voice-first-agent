@@ -1,7 +1,7 @@
 """Configuration loaded from environment / .env file."""
 
 import os
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -17,9 +17,10 @@ class Settings:
         "BEDROCK_MODEL_ID", "us.anthropic.claude-sonnet-4-20250514-v1:0"
     )
 
-    # Polly
-    polly_voice_id: str = os.getenv("POLLY_VOICE_ID", "Matthew")
-    polly_engine: str = os.getenv("POLLY_ENGINE", "neural")
+    # F5-TTS
+    tts_device: str = os.getenv("TTS_DEVICE", "cpu")  # "cpu", "cuda", or "mps" (Apple Silicon)
+    tts_ref_audio: str = os.getenv("TTS_REF_AUDIO", "")  # Path to reference voice audio
+    tts_ref_text: str = os.getenv("TTS_REF_TEXT", "")  # Transcript of reference audio
 
     # Whisper
     whisper_model: str = os.getenv("WHISPER_MODEL", "base")

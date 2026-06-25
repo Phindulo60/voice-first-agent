@@ -9,6 +9,7 @@ def test_config_loads():
     from src.config import settings
     assert settings.aws_region == "us-east-1"
     assert settings.sample_rate == 16000
+    assert settings.tts_device in ("cpu", "cuda", "mps")
 
 
 def test_whisper_model_loads():
@@ -38,6 +39,7 @@ def test_llm_responds():
 def test_tts_synthesizes():
     """TTS produces audio array."""
     from src.tts import synthesize
-    audio = synthesize("Hello world")
-    assert isinstance(audio, np.ndarray)
-    assert len(audio) > 0
+    wav, sr = synthesize("Hello world")
+    assert isinstance(wav, np.ndarray)
+    assert len(wav) > 0
+    assert sr > 0
