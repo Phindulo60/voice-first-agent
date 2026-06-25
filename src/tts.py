@@ -7,10 +7,10 @@ Uses a reference audio for voice cloning (zero-shot).
 Falls back to built-in example voice if no reference provided.
 """
 
-import os
 import numpy as np
 import sounddevice as sd
 import soundfile as sf
+from importlib.resources import files
 from rich.console import Console
 
 from src.config import settings
@@ -27,7 +27,7 @@ def get_model():
     if _model is None:
         console.print("[dim]Loading F5-TTS model...[/dim]")
         from f5_tts.api import F5TTS
-        _model = F5TTS(model_type="F5-TTS", ckpt_file="", device=settings.tts_device)
+        _model = F5TTS(model="F5TTS_v1_Base", device=settings.tts_device)
         console.print("[green]✓ F5-TTS model loaded[/green]")
     return _model
 
@@ -41,16 +41,22 @@ def synthesize(text: str) -> tuple[np.ndarray, int]:
     """
     model = get_model()
 
-    # Use reference audio for voice style (or F5-TTS built-in example)
+    # Use custom reference audio or fall back to built-in English example
     ref_file = settings.tts_ref_audio
     ref_text = settings.tts_ref_text
+
+    if not ref_file:
+        # Use built-in English reference
+        ref_file = str(files("f5_tts").joinpath("infer/examples/basic/basic_ref_en.wav"))
+        ref_text = "Some call me nature, others call me mother nature."
 
     # Generate speech
     wav, sr, _ = model.infer(
         ref_file=ref_file,
         ref_text=ref_text,
         gen_text=text,
-        seed=None,  # Random seed for variation
+        show_info=lambda x: None,  # Suppress verbose output
+        seed=None,
     )
 
     return wav, sr
