@@ -1,90 +1,90 @@
-# Voice-First Agent — Baseline
+# Voice-First Agent
 
-English voice-in → LLM (Bedrock Claude) → English voice-out.
-
-The simplest possible voice agent cascade. This is the foundation for the full Zulu voice-first agent — proving the pipeline works before adding translation layers.
+A cascaded voice agent pipeline — the foundation for a Zulu voice-first agentic system.
 
 ## Architecture
 
+### isiZulu Pipeline (default)
 ```
-[Mic Input] → [Whisper ASR] → [Bedrock Claude Sonnet] → [F5-TTS] → [Speaker Output]
-         local                    cloud (only LLM)          local
+[Mic] → [Whisper ASR] → [NLLB zu→en] → [Bedrock Claude] → [NLLB en→zu] → [F5-TTS] → [Speaker]
+  local       local           local           cloud            local          local
 ```
 
-## Future: Full Zulu Pipeline
-
+### English Baseline
 ```
-[Mic] → [Zulu ASR] → [NLLB MT zu→en] → [Bedrock Claude] → [NLLB MT en→zu] → [F5-TTS Zulu] → [Speaker]
+[Mic] → [Whisper ASR] → [Bedrock Claude] → [F5-TTS] → [Speaker]
 ```
 
 ## Setup
 
 ```bash
-# Clone
 git clone https://github.com/Phindulo60/voice-first-agent.git
 cd voice-first-agent
 
-# Create virtual environment
-python3 -m venv .venv
+# Create venv with uv (avoids macOS libexpat issues)
+uv venv --python 3.11 .venv
 source .venv/bin/activate
 
 # Install dependencies
-pip install -r requirements.txt
+uv pip install -r requirements.txt
 
-# Install FFmpeg (needed for F5-TTS audio processing)
-# macOS:
+# Install FFmpeg (needed for audio processing)
 brew install ffmpeg
-# Ubuntu:
-# sudo apt-get install ffmpeg
 
-# Configure AWS credentials (needs Bedrock access)
-export AWS_PROFILE=your-profile  # or configure ~/.aws/credentials
-
-# Copy env template and edit
+# Configure
 cp .env.example .env
+# Edit .env with your AWS credentials / preferences
 ```
 
 ## Usage
 
 ```bash
-# Run the voice agent (press Enter to start/stop recording)
+# Zulu pipeline (default) — speak isiZulu, get isiZulu response
 python -m src.main
 
+# English-only mode
+python -m src.main --english
+
 # Test individual components
-python -m src.asr          # Test speech-to-text only
+python -m src.mt           # Test translation (type Zulu/English text)
+python -m src.asr          # Test speech-to-text
 python -m src.llm          # Test LLM with text input
-python -m src.tts          # Test text-to-speech only
+python -m src.tts          # Test text-to-speech
 ```
-
-## Voice Cloning (Optional)
-
-F5-TTS supports zero-shot voice cloning. To use your own voice:
-
-1. Record a 5-10 second reference audio clip (clear speech, no background noise)
-2. Save as `ref_audio.wav` in the project root
-3. Set in `.env`:
-```
-TTS_REF_AUDIO=ref_audio.wav
-TTS_REF_TEXT=The exact words spoken in your reference audio.
-```
-
-Leave blank to use F5-TTS's built-in default voice.
 
 ## Components
 
-| Stage | Technology | Runs | Notes |
-|-------|-----------|------|-------|
-| ASR | faster-whisper | Local | No API call, CPU or GPU |
-| LLM | Bedrock Claude Sonnet 4 | Cloud | Only cloud dependency |
-| TTS | F5-TTS v1 | Local | Flow-matching, zero-shot voice cloning |
+| Stage | Technology | Size | Runs |
+|-------|-----------|------|------|
+| ASR | faster-whisper | ~150MB | Local |
+| MT | NLLB-200 (distilled 600M) | ~2.3GB | Local |
+| LLM | Bedrock Claude Sonnet 4 | — | Cloud (only cloud dep) |
+| TTS | F5-TTS v1 | ~1.2GB | Local |
 
-## Requirements
+## Notes
 
-- Python 3.10+
-- AWS account with Bedrock access
-- FFmpeg installed
-- Microphone
-- macOS (Apple Silicon MPS) / Linux (CUDA) / CPU fallback
+- First run downloads models (~4GB total). Subsequent runs use cached models.
+- F5-TTS takes ~20-30s to load; once loaded, inference is fast.
+- NLLB 600M is a good balance of speed and quality. For better Zulu, try `facebook/nllb-200-3.3B`.
+- Whisper `base` model works for English. For better Zulu ASR, use `large-v3`.
+
+## Voice Cloning (Optional)
+
+Record 5-10s of clear speech, save as `ref_audio.wav`, and set in `.env`:
+```
+TTS_REF_AUDIO=ref_audio.wav
+TTS_REF_TEXT=The exact words you spoke in the recording.
+```
+
+## Roadmap
+
+- [x] English baseline (ASR → LLM → TTS)
+- [x] isiZulu pipeline (ASR → MT → LLM → MT → TTS)
+- [ ] Confidence-gated confirm-back (QE safety layer)
+- [ ] Zulu-specific ASR (fine-tuned W2v-BERT)
+- [ ] Zulu-specific TTS (F5-TTS fine-tuned on Zulu voice)
+- [ ] Tool use / MCP integration (agentic actions)
+- [ ] USSD / WhatsApp channel integration
 
 ## License
 

@@ -4,6 +4,10 @@ faster-whisper>=1.0.0
 # TTS - F5-TTS (local, flow-matching)
 f5-tts
 
+# Translation - NLLB-200 (local, Meta)
+transformers>=4.40.0
+sentencepiece>=0.2.0
+
 # AWS SDK (for Bedrock LLM only)
 boto3>=1.35.0
 
