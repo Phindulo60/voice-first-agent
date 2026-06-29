@@ -3,10 +3,10 @@ Stage 1: Automatic Speech Recognition (ASR)
 
 Two engines:
   - Whisper: for English (excellent)
-  - MMS (Meta Massively Multilingual Speech): for isiZulu (1000+ languages, incl Zulu)
+  - MMS (Meta Massively Multilingual Speech): for isiZulu
 
-MMS is based on Wav2Vec2 with language-specific adapters.
-It loads the Zulu adapter ('zul') for accurate Zulu transcription.
+Default Zulu model: asr-africa/mms-1B_all_NCHLT_ZULU_50hr_v1
+(fine-tuned on 50hrs of Zulu NCHLT speech corpus, ~20% WER)
 """
 
 import numpy as np
@@ -51,11 +51,15 @@ def get_mms_model():
         _mms_processor = AutoProcessor.from_pretrained(model_id)
         _mms_model = Wav2Vec2ForCTC.from_pretrained(model_id)
 
-        # Load Zulu adapter
-        _mms_processor.tokenizer.set_target_lang("zul")
-        _mms_model.load_adapter("zul")
+        # Only load adapter if using the generic mms-1b-all model
+        # Fine-tuned models (like NCHLT_ZULU) are already Zulu-specific
+        if "mms-1b-all" in model_id and "NCHLT" not in model_id:
+            _mms_processor.tokenizer.set_target_lang("zul")
+            _mms_model.load_adapter("zul")
+            console.print("[green]✓ MMS model loaded (Zulu adapter active)[/green]")
+        else:
+            console.print("[green]✓ MMS Zulu model loaded (fine-tuned)[/green]")
 
-        console.print("[green]✓ MMS model loaded (Zulu adapter active)[/green]")
     return _mms_model, _mms_processor
 
 
@@ -112,7 +116,6 @@ def record_audio(duration: float = None) -> np.ndarray:
 def transcribe(audio: np.ndarray, language: str = None) -> str:
     """
     Transcribe audio to text.
-
     Uses Whisper for English, MMS for Zulu.
     """
     import torch
@@ -120,7 +123,6 @@ def transcribe(audio: np.ndarray, language: str = None) -> str:
     lang = language or settings.asr_language
 
     if lang == "en":
-        # Use Whisper for English
         model = get_whisper_model()
         segments, info = model.transcribe(
             audio,
@@ -131,10 +133,9 @@ def transcribe(audio: np.ndarray, language: str = None) -> str:
         text = " ".join(segment.text.strip() for segment in segments)
 
     else:
-        # Use MMS for Zulu (and other African languages)
+        # MMS for Zulu
         model, processor = get_mms_model()
 
-        # MMS expects 16kHz float32 audio
         inputs = processor(
             audio,
             sampling_rate=16_000,
@@ -144,7 +145,6 @@ def transcribe(audio: np.ndarray, language: str = None) -> str:
         with torch.no_grad():
             outputs = model(**inputs).logits
 
-        # Decode
         ids = torch.argmax(outputs, dim=-1)[0]
         text = processor.decode(ids)
 
@@ -156,7 +156,7 @@ def transcribe(audio: np.ndarray, language: str = None) -> str:
 if __name__ == "__main__":
     console.print("[bold]ASR Test[/bold]\n")
     console.print(f"[dim]Language: {settings.asr_language}[/dim]")
-    console.print(f"[dim]Engine: {'Whisper' if settings.asr_language == 'en' else 'MMS (Zulu)'}[/dim]\n")
+    console.print(f"[dim]Model: {settings.mms_model if settings.asr_language != 'en' else settings.whisper_model}[/dim]\n")
 
     get_model()
     audio = record_audio()

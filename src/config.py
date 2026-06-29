@@ -28,7 +28,7 @@ class Settings:
 
     # ASR
     whisper_model: str = os.getenv("WHISPER_MODEL", "base")
-    mms_model: str = os.getenv("MMS_MODEL", "facebook/mms-1b-all")
+    mms_model: str = os.getenv("MMS_MODEL", "asr-africa/mms-1B_all_NCHLT_ZULU_50hr_v1")
     asr_language: str = os.getenv("ASR_LANGUAGE", "zu")  # 'zu' for Zulu (MMS), 'en' for English (Whisper)
 
     # Audio
