@@ -4,9 +4,6 @@ Voice-First Agent — Main Loop
 Supports two modes:
   - English baseline: Mic → ASR → LLM → TTS
   - Zulu pipeline:    Mic → ASR → MT(zu→en) → LLM → MT(en→zu) → TTS
-
-The cascade:
-  [Zulu Speech] → [Whisper] → [NLLB zu→en] → [Bedrock Claude] → [NLLB en→zu] → [F5-TTS] → [Speaker]
 """
 
 import sys
@@ -33,7 +30,7 @@ def run_english():
         )
     )
 
-    get_model()  # Pre-load Whisper
+    get_model()
     conversation_history = []
 
     while True:
@@ -45,7 +42,7 @@ def run_english():
                 console.print("[dim]No audio detected, try again.[/dim]")
                 continue
 
-            text = transcribe(audio)
+            text = transcribe(audio, language="en")
             if not text.strip():
                 console.print("[dim]Couldn't understand, try again.[/dim]")
                 continue
@@ -72,16 +69,15 @@ def run_zulu():
     console.print(
         Panel(
             "[bold]Voice-First Agent — isiZulu Pipeline[/bold]\n\n"
-            "[dim]Pipeline:[/dim] Mic → Whisper ASR → NLLB (zu→en) → Bedrock Claude → NLLB (en→zu) → F5-TTS → Speaker\n\n"
+            "[dim]Pipeline:[/dim] Mic → Whisper ASR (zu) → NLLB (zu→en) → Bedrock Claude → NLLB (en→zu) → F5-TTS → Speaker\n\n"
             "Press [bold]Enter[/bold] to start recording, [bold]Enter[/bold] again to stop.\n"
-            "Say [bold]'sala kahle'[/bold] or [bold]'exit'[/bold] to quit.\n\n"
-            "[dim]Note: Whisper will transcribe your Zulu speech, then NLLB translates to English for the LLM.[/dim]",
+            "Say [bold]'sala kahle'[/bold] or [bold]'exit'[/bold] to quit.",
             title="🎤 isiZulu Mode",
             border_style="green",
         )
     )
 
-    get_model()  # Pre-load Whisper
+    get_model()
     conversation_history = []
 
     while True:
@@ -93,9 +89,8 @@ def run_zulu():
                 console.print("[dim]No audio detected, try again.[/dim]")
                 continue
 
-            # Stage 1: ASR — Zulu speech to text
-            # Note: Whisper will do its best with Zulu; may transcribe phonetically
-            zulu_text = transcribe(audio)
+            # Stage 1: ASR — Zulu speech to text (language hint = zu)
+            zulu_text = transcribe(audio, language="zu")
             if not zulu_text.strip():
                 console.print("[dim]Couldn't understand, try again.[/dim]")
                 continue
@@ -127,7 +122,7 @@ def run_zulu():
 
 def main():
     """Entry point — choose mode."""
-    mode = "zulu"  # default to Zulu pipeline
+    mode = "zulu"
 
     if len(sys.argv) > 1:
         if sys.argv[1] in ("--english", "-e", "en"):
@@ -137,8 +132,8 @@ def main():
         elif sys.argv[1] in ("--help", "-h"):
             console.print(
                 "[bold]Usage:[/bold] python -m src.main [--english | --zulu]\n\n"
-                "  --english, -e    English-only pipeline (ASR → LLM → TTS)\n"
-                "  --zulu, -z       isiZulu pipeline (ASR → MT → LLM → MT → TTS) [default]"
+                "  --english, -e    English-only pipeline\n"
+                "  --zulu, -z       isiZulu pipeline [default]"
             )
             return
 

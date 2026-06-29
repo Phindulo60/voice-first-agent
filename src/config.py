@@ -18,16 +18,17 @@ class Settings:
     )
 
     # F5-TTS
-    tts_device: str = os.getenv("TTS_DEVICE", "mps")
+    tts_device: str = os.getenv("TTS_DEVICE", "cpu")  # cpu safer; mps can segfault
     tts_ref_audio: str = os.getenv("TTS_REF_AUDIO", "")
     tts_ref_text: str = os.getenv("TTS_REF_TEXT", "")
 
     # NLLB Translation
     nllb_model: str = os.getenv("NLLB_MODEL", "facebook/nllb-200-distilled-600M")
-    mt_device: str = os.getenv("MT_DEVICE", "cpu")  # cpu recommended for 600M model
+    mt_device: str = os.getenv("MT_DEVICE", "cpu")
 
-    # Whisper
+    # Whisper ASR
     whisper_model: str = os.getenv("WHISPER_MODEL", "base")
+    asr_language: str = os.getenv("ASR_LANGUAGE", "zu")  # 'zu' for Zulu, 'en' for English, 'auto' for auto-detect
 
     # Audio
     sample_rate: int = int(os.getenv("SAMPLE_RATE", "16000"))

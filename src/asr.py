@@ -1,12 +1,11 @@
 """
 Stage 1: Automatic Speech Recognition (ASR)
-Whisper-based local transcription — English voice → text.
+Whisper-based local transcription — speech to text.
+Supports English and isiZulu (via language parameter).
 """
 
-import io
 import numpy as np
 import sounddevice as sd
-import soundfile as sf
 from faster_whisper import WhisperModel
 from rich.console import Console
 
@@ -25,7 +24,7 @@ def get_model() -> WhisperModel:
         console.print(f"[dim]Loading Whisper model: {settings.whisper_model}...[/dim]")
         _model = WhisperModel(
             settings.whisper_model,
-            device="cpu",  # Use "cuda" if you have GPU
+            device="cpu",
             compute_type="int8",
         )
         console.print("[green]✓ Whisper model loaded[/green]")
@@ -35,9 +34,7 @@ def get_model() -> WhisperModel:
 def record_audio(duration: float = None) -> np.ndarray:
     """
     Record audio from microphone.
-    
     If duration is None, records until Enter is pressed.
-    Returns numpy array of audio samples.
     """
     sample_rate = settings.sample_rate
     channels = settings.channels
@@ -52,7 +49,6 @@ def record_audio(duration: float = None) -> np.ndarray:
         )
         sd.wait()
     else:
-        # Record until Enter is pressed
         console.print("[yellow]🎤 Recording... Press Enter to stop.[/yellow]")
         frames = []
         recording = True
@@ -68,7 +64,7 @@ def record_audio(duration: float = None) -> np.ndarray:
             callback=callback,
         )
         with stream:
-            input()  # Wait for Enter
+            input()
             recording = False
 
         audio = np.concatenate(frames, axis=0) if frames else np.zeros((0, channels))
@@ -77,28 +73,32 @@ def record_audio(duration: float = None) -> np.ndarray:
     return audio.flatten()
 
 
-def transcribe(audio: np.ndarray) -> str:
-    """Transcribe audio array to text using Whisper."""
-    model = get_model()
+def transcribe(audio: np.ndarray, language: str = None) -> str:
+    """
+    Transcribe audio array to text using Whisper.
 
-    # Whisper expects 16kHz mono float32
+    Args:
+        audio: numpy array of audio samples (16kHz mono float32)
+        language: Language code ('en', 'zu', etc). If None, uses config default.
+    """
+    model = get_model()
+    lang = language or settings.asr_language
+
     segments, info = model.transcribe(
         audio,
-        language="en",
+        language=lang if lang != "auto" else None,  # None = auto-detect
         beam_size=5,
-        vad_filter=True,  # Filter out silence
+        vad_filter=True,
     )
 
     text = " ".join(segment.text.strip() for segment in segments)
-    console.print(f"[blue]📝 Transcribed:[/blue] {text}")
+    console.print(f"[blue]📝 Transcribed ({lang}):[/blue] {text}")
     return text
 
 
 # Allow running standalone for testing
 if __name__ == "__main__":
-    from src.config import settings  # noqa
-
-    console.print("[bold]ASR Test — Speak in English[/bold]\n")
+    console.print("[bold]ASR Test — Speak (language from config)[/bold]\n")
     audio = record_audio()
     if len(audio) > 0:
         text = transcribe(audio)
