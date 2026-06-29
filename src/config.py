@@ -28,7 +28,7 @@ class Settings:
 
     # Whisper ASR
     whisper_model: str = os.getenv("WHISPER_MODEL", "base")
-    asr_language: str = os.getenv("ASR_LANGUAGE", "zu")  # 'zu' for Zulu, 'en' for English, 'auto' for auto-detect
+    asr_language: str = os.getenv("ASR_LANGUAGE", "auto")  # 'zu' for Zulu, 'en' for English, 'auto' for auto-detect
 
     # Audio
     sample_rate: int = int(os.getenv("SAMPLE_RATE", "16000"))
