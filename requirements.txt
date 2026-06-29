@@ -1,11 +1,11 @@
-# ASR - Local Whisper
+# ASR - Whisper (English) + MMS (Zulu/African languages)
 faster-whisper>=1.0.0
+transformers>=4.40.0
 
 # TTS - F5-TTS (local, flow-matching)
 f5-tts
 
 # Translation - NLLB-200 (local, Meta)
-transformers>=4.40.0
 sentencepiece>=0.2.0
 
 # AWS SDK (for Bedrock LLM only)
@@ -15,6 +15,10 @@ boto3>=1.35.0
 sounddevice>=0.4.6
 soundfile>=0.12.1
 numpy>=1.24.0
+
+# ML
+torch>=2.0.0
+accelerate>=0.20.0
 
 # Utilities
 python-dotenv>=1.0.0

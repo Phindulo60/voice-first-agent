@@ -1,34 +1,70 @@
 """
 Stage 1: Automatic Speech Recognition (ASR)
-Whisper-based local transcription — speech to text.
-Supports English and isiZulu (via language parameter).
+
+Two engines:
+  - Whisper: for English (excellent)
+  - MMS (Meta Massively Multilingual Speech): for isiZulu (1000+ languages, incl Zulu)
+
+MMS is based on Wav2Vec2 with language-specific adapters.
+It loads the Zulu adapter ('zul') for accurate Zulu transcription.
 """
 
 import numpy as np
 import sounddevice as sd
-from faster_whisper import WhisperModel
 from rich.console import Console
 
 from src.config import settings
 
 console = Console()
 
-# Load model once (lazy singleton)
-_model = None
+# Models (lazy singletons)
+_whisper_model = None
+_mms_model = None
+_mms_processor = None
 
 
-def get_model() -> WhisperModel:
-    """Load Whisper model (cached after first call)."""
-    global _model
-    if _model is None:
+def get_whisper_model():
+    """Load Whisper model for English ASR."""
+    global _whisper_model
+    if _whisper_model is None:
+        from faster_whisper import WhisperModel
         console.print(f"[dim]Loading Whisper model: {settings.whisper_model}...[/dim]")
-        _model = WhisperModel(
+        _whisper_model = WhisperModel(
             settings.whisper_model,
             device="cpu",
             compute_type="int8",
         )
         console.print("[green]✓ Whisper model loaded[/green]")
-    return _model
+    return _whisper_model
+
+
+def get_mms_model():
+    """Load MMS model for Zulu ASR."""
+    global _mms_model, _mms_processor
+    if _mms_model is None:
+        import torch
+        from transformers import Wav2Vec2ForCTC, AutoProcessor
+
+        model_id = settings.mms_model
+        console.print(f"[dim]Loading MMS model: {model_id}...[/dim]")
+
+        _mms_processor = AutoProcessor.from_pretrained(model_id)
+        _mms_model = Wav2Vec2ForCTC.from_pretrained(model_id)
+
+        # Load Zulu adapter
+        _mms_processor.tokenizer.set_target_lang("zul")
+        _mms_model.load_adapter("zul")
+
+        console.print("[green]✓ MMS model loaded (Zulu adapter active)[/green]")
+    return _mms_model, _mms_processor
+
+
+def get_model():
+    """Pre-load the appropriate model based on config."""
+    if settings.asr_language == "en":
+        get_whisper_model()
+    else:
+        get_mms_model()
 
 
 def record_audio(duration: float = None) -> np.ndarray:
@@ -75,30 +111,54 @@ def record_audio(duration: float = None) -> np.ndarray:
 
 def transcribe(audio: np.ndarray, language: str = None) -> str:
     """
-    Transcribe audio array to text using Whisper.
+    Transcribe audio to text.
 
-    Args:
-        audio: numpy array of audio samples (16kHz mono float32)
-        language: Language code ('en', 'zu', etc). If None, uses config default.
+    Uses Whisper for English, MMS for Zulu.
     """
-    model = get_model()
+    import torch
+
     lang = language or settings.asr_language
 
-    segments, info = model.transcribe(
-        audio,
-        language=lang if lang != "auto" else None,  # None = auto-detect
-        beam_size=5,
-        vad_filter=True,
-    )
+    if lang == "en":
+        # Use Whisper for English
+        model = get_whisper_model()
+        segments, info = model.transcribe(
+            audio,
+            language="en",
+            beam_size=5,
+            vad_filter=True,
+        )
+        text = " ".join(segment.text.strip() for segment in segments)
 
-    text = " ".join(segment.text.strip() for segment in segments)
+    else:
+        # Use MMS for Zulu (and other African languages)
+        model, processor = get_mms_model()
+
+        # MMS expects 16kHz float32 audio
+        inputs = processor(
+            audio,
+            sampling_rate=16_000,
+            return_tensors="pt",
+        )
+
+        with torch.no_grad():
+            outputs = model(**inputs).logits
+
+        # Decode
+        ids = torch.argmax(outputs, dim=-1)[0]
+        text = processor.decode(ids)
+
     console.print(f"[blue]📝 Transcribed ({lang}):[/blue] {text}")
     return text
 
 
 # Allow running standalone for testing
 if __name__ == "__main__":
-    console.print("[bold]ASR Test — Speak (language from config)[/bold]\n")
+    console.print("[bold]ASR Test[/bold]\n")
+    console.print(f"[dim]Language: {settings.asr_language}[/dim]")
+    console.print(f"[dim]Engine: {'Whisper' if settings.asr_language == 'en' else 'MMS (Zulu)'}[/dim]\n")
+
+    get_model()
     audio = record_audio()
     if len(audio) > 0:
         text = transcribe(audio)
