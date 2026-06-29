@@ -90,7 +90,7 @@ def run_zulu():
                 continue
 
             # Stage 1: ASR — Zulu speech to text (language hint = zu)
-            zulu_text = transcribe(audio, language="zu")
+            zulu_text = transcribe(audio)
             if not zulu_text.strip():
                 console.print("[dim]Couldn't understand, try again.[/dim]")
                 continue
