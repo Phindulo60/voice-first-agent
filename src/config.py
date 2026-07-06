@@ -28,8 +28,13 @@ class Settings:
 
     # ASR
     whisper_model: str = os.getenv("WHISPER_MODEL", "base")
-    mms_model: str = os.getenv("MMS_MODEL", "asr-africa/mms-1B_all_NCHLT_ZULU_50hr_v1")
-    asr_language: str = os.getenv("ASR_LANGUAGE", "zu")  # 'zu' for Zulu (MMS), 'en' for English (Whisper)
+    mms_model: str = os.getenv("MMS_MODEL", "facebook/mms-1b-all")
+    asr_language: str = os.getenv("ASR_LANGUAGE", "zu")
+
+    # Safety Layer
+    safety_enabled: bool = os.getenv("SAFETY_ENABLED", "true").lower() == "true"
+    safety_high_threshold: float = float(os.getenv("SAFETY_HIGH_THRESHOLD", "0.75"))
+    safety_low_threshold: float = float(os.getenv("SAFETY_LOW_THRESHOLD", "0.50"))
 
     # Audio
     sample_rate: int = int(os.getenv("SAMPLE_RATE", "16000"))
