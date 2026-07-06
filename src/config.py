@@ -17,7 +17,9 @@ class Settings:
         "BEDROCK_MODEL_ID", "us.anthropic.claude-sonnet-4-20250514-v1:0"
     )
 
-    # F5-TTS
+    # TTS
+    tts_engine: str = os.getenv("TTS_ENGINE", "mms")  # 'mms' (native Zulu) or 'f5' (voice cloning)
+    mms_tts_model: str = os.getenv("MMS_TTS_MODEL", "facebook/mms-tts-zul")
     tts_device: str = os.getenv("TTS_DEVICE", "cpu")
     tts_ref_audio: str = os.getenv("TTS_REF_AUDIO", "")
     tts_ref_text: str = os.getenv("TTS_REF_TEXT", "")
