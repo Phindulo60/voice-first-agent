@@ -6,7 +6,7 @@ Molefe's design brief specifies a **dual success metric**:
 1. **Backend state changed** — did the task actually complete? (the product metric)
 2. **Completed without English** — did the user finish never needing English? (the research metric)
 
-The second metric is where the novelty lives. Nobody has benchmarked this for non-literate voice users. That's the paper.
+The second metric is where the novelty lives. Nobody has benchmarked this for non-literate voice users. 
 
 The English pipeline is our **control**. The Zulu pipeline is the **treatment**. The gap between them tells us where the cascade is losing performance — and whether the safety layer closes that gap.
 
