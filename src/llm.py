@@ -7,6 +7,8 @@ tool, we execute it locally and feed the result back until the model
 produces a final text answer.
 """
 
+import time
+
 import boto3
 from rich.console import Console
 
@@ -59,7 +61,7 @@ def _extract_text(content_blocks: list) -> str:
     return " ".join(block["text"] for block in content_blocks if "text" in block)
 
 
-def chat(user_text: str, conversation_history: list = None) -> str:
+def chat(user_text: str, conversation_history: list = None, on_tool_call=None) -> str:
     """
     Send user text to Bedrock Claude via Converse API, resolving any
     tool_use round trips, and return the final text response.
@@ -68,6 +70,10 @@ def chat(user_text: str, conversation_history: list = None) -> str:
         user_text: Transcribed user speech
         conversation_history: List of prior messages for multi-turn.
             Mutated in place so callers keep the running history.
+        on_tool_call: Optional callback invoked once per tool call with
+            {"name": str, "input": dict, "result": dict, "latency_ms": float}.
+            Used by main.py to record tool calls onto the session log
+            (see src/logger.py, issue #3) without llm.py depending on it.
 
     Returns:
         Assistant response text
@@ -96,8 +102,21 @@ def chat(user_text: str, conversation_history: list = None) -> str:
                 continue
             tool_use = block["toolUse"]
             console.print(f"[cyan]🔧 Tool call:[/cyan] {tool_use['name']}({tool_use['input']})")
+
+            tool_start = time.time()
             result = execute_tool(tool_use["name"], tool_use["input"])
+            latency_ms = round((time.time() - tool_start) * 1000, 1)
+
             console.print(f"[cyan]🔧 Tool result:[/cyan] {result}")
+
+            if on_tool_call:
+                on_tool_call({
+                    "name": tool_use["name"],
+                    "input": tool_use["input"],
+                    "result": result,
+                    "latency_ms": latency_ms,
+                })
+
             tool_result_content.append({
                 "toolResult": {
                     "toolUseId": tool_use["toolUseId"],

@@ -20,6 +20,15 @@ def test_new_turn_has_identity_and_mode(logger):
     assert turn.turn_id == f"{logger.session_id}-1"
     assert turn.pipeline == "zulu"
     assert turn.safety_enabled is True
+    assert turn.tool_calls == []
+
+
+def test_tool_calls_default_list_is_independent_per_turn(logger):
+    """dataclass default_factory should give each turn its own list, not a shared one."""
+    first = logger.new_turn()
+    second = logger.new_turn()
+    first.tool_calls.append({"name": "purchase_airtime"})
+    assert second.tool_calls == []
 
 
 def test_turn_ids_increment_per_session(logger):
@@ -76,3 +85,48 @@ def test_session_summary_ignores_other_sessions(logger, tmp_path, monkeypatch):
 
     summary = logger.session_summary()
     assert summary["total_turns"] == 1
+
+
+def test_session_summary_with_no_tool_calls(logger):
+    logger.finish_turn(logger.new_turn())
+
+    summary = logger.session_summary()
+    assert summary["tool_calls_total"] == 0
+    assert summary["tool_calls_succeeded"] == 0
+    assert summary["tool_call_success_rate"] is None
+
+
+def test_session_summary_counts_tool_call_success_rate(logger):
+    successful = logger.new_turn()
+    successful.tool_calls.append({
+        "name": "purchase_airtime",
+        "input": {"amount": 20},
+        "result": {"success": True, "new_balance": 80.0},
+        "latency_ms": 12.3,
+    })
+    logger.finish_turn(successful)
+
+    failed = logger.new_turn()
+    failed.tool_calls.append({
+        "name": "purchase_airtime",
+        "input": {"amount": 500},
+        "result": {"success": False, "error": "Insufficient balance"},
+        "latency_ms": 8.1,
+    })
+    logger.finish_turn(failed)
+
+    summary = logger.session_summary()
+    assert summary["tool_calls_total"] == 2
+    assert summary["tool_calls_succeeded"] == 1
+    assert summary["tool_call_success_rate"] == 0.5
+
+
+def test_session_summary_counts_multiple_tool_calls_in_one_turn(logger):
+    turn = logger.new_turn()
+    turn.tool_calls.append({"name": "purchase_airtime", "result": {"success": True}})
+    turn.tool_calls.append({"name": "purchase_airtime", "result": {"success": True}})
+    logger.finish_turn(turn)
+
+    summary = logger.session_summary()
+    assert summary["tool_calls_total"] == 2
+    assert summary["tool_call_success_rate"] == 1.0

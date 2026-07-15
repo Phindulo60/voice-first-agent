@@ -65,7 +65,7 @@ def run_english():
                 break
 
             t0 = logger.stage_timer_start()
-            response = chat(text, conversation_history)
+            response = chat(text, conversation_history, on_tool_call=turn.tool_calls.append)
             turn.llm_input_text = text
             turn.llm_response_text = response
             turn.llm_latency_ms = logger.stage_timer_ms(t0)
@@ -189,7 +189,7 @@ def run_zulu():
 
             # Stage 3: LLM
             t0 = logger.stage_timer_start()
-            english_response = chat(english_text, conversation_history)
+            english_response = chat(english_text, conversation_history, on_tool_call=turn.tool_calls.append)
             turn.llm_input_text = english_text
             turn.llm_response_text = english_response
             turn.llm_latency_ms = logger.stage_timer_ms(t0)
@@ -233,6 +233,11 @@ def _print_summary(logger: SessionLogger):
     console.print(f"  Session ID: {summary['session_id']}")
     console.print(f"  Turns: {summary['total_turns']}")
     console.print(f"  Safety triggered: {summary['safety_triggered_count']} ({summary['safety_trigger_rate']*100:.0f}%)")
+    if summary["tool_calls_total"]:
+        console.print(
+            f"  Tool calls: {summary['tool_calls_total']} "
+            f"({summary['tool_calls_succeeded']} succeeded, {summary['tool_call_success_rate']*100:.0f}%)"
+        )
     console.print(f"  Avg latency: {summary['avg_total_latency_ms']:.0f}ms")
     console.print(f"  Log file: {logger.log_file}")
 

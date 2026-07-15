@@ -93,6 +93,36 @@ def test_chat_mutates_history_in_place(monkeypatch):
     assert history[1]["role"] == "assistant"
 
 
+def test_chat_invokes_on_tool_call_with_structured_event(monkeypatch):
+    fake = FakeBedrockClient([
+        _tool_use_response("t1", "purchase_airtime", {"amount": 20, "provider": "MTN"}),
+        _text_response("Done."),
+    ])
+    monkeypatch.setattr(llm, "get_client", lambda: fake)
+
+    recorded = []
+    llm.chat("Buy me R20 of MTN airtime", [], on_tool_call=recorded.append)
+
+    assert len(recorded) == 1
+    event = recorded[0]
+    assert event["name"] == "purchase_airtime"
+    assert event["input"] == {"amount": 20, "provider": "MTN"}
+    assert event["result"]["success"] is True
+    assert event["latency_ms"] >= 0
+
+
+def test_chat_without_on_tool_call_is_optional(monkeypatch):
+    # chat() must work fine when callers do not pass on_tool_call at all.
+    fake = FakeBedrockClient([
+        _tool_use_response("t1", "purchase_airtime", {"amount": 20}),
+        _text_response("Done."),
+    ])
+    monkeypatch.setattr(llm, "get_client", lambda: fake)
+
+    result = llm.chat("Buy me R20 of airtime", [])
+    assert result == "Done."
+
+
 def test_chat_gives_up_after_max_tool_rounds(monkeypatch):
     responses = [
         _tool_use_response(f"t{i}", "purchase_airtime", {"amount": 1})

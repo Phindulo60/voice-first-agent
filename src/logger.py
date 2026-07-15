@@ -53,6 +53,10 @@ class TurnLog:
     llm_response_text: str = ""
     llm_latency_ms: float = 0.0
 
+    # Stage 3.5: Tool use (see issue #4) — one entry per tool call this turn:
+    # {"name": str, "input": dict, "result": dict, "latency_ms": float}
+    tool_calls: list = field(default_factory=list)
+
     # Stage 4: MT (en->zu), only for zulu pipeline
     mt_reverse_text: str = ""
     mt_reverse_latency_ms: float = 0.0
@@ -138,6 +142,9 @@ class SessionLogger:
         safety_fires = sum(1 for t in turns if t.get("safety_triggered"))
         completed = sum(1 for t in turns if t.get("task_completed") is True)
 
+        all_tool_calls = [call for t in turns for call in t.get("tool_calls", [])]
+        tool_calls_succeeded = sum(1 for call in all_tool_calls if call.get("result", {}).get("success") is True)
+
         return {
             "session_id": self.session_id,
             "pipeline": self.pipeline,
@@ -145,6 +152,9 @@ class SessionLogger:
             "safety_triggered_count": safety_fires,
             "safety_trigger_rate": round(safety_fires / len(turns), 2) if turns else 0,
             "tasks_completed": completed,
+            "tool_calls_total": len(all_tool_calls),
+            "tool_calls_succeeded": tool_calls_succeeded,
+            "tool_call_success_rate": round(tool_calls_succeeded / len(all_tool_calls), 2) if all_tool_calls else None,
             "avg_total_latency_ms": round(
                 sum(t.get("total_latency_ms", 0) for t in turns) / len(turns), 1
             ),
